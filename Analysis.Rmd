@@ -1,0 +1,58 @@
+---
+title: "Analysis.Rmd"
+author: "Pirkka"
+date: "19.04.2015"
+output: html_document
+---
+
+## Synopsis
+
+
+
+## Data Processing
+
+Load file from web and unzip it:
+
+```{r, cache=TRUE}
+if (!file.exists("stormdata.csv.bz2")) {
+  download.file(
+    "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", 
+    "stormdata.csv.bz2",method="curl")
+}
+
+stormdata <- read.csv(bzfile("stormdata.csv.bz2"))
+
+names(stormdata)
+
+fatalitiesByEventTypeUnOrdered <- aggregate(FATALITIES ~ EVTYPE, stormdata, sum)
+fatalitymeanByEventTypeUnOrdered <- aggregate(FATALITIES ~ EVTYPE, stormdata, mean)
+
+head(stormdata)
+
+unique(stormdata$PROPDMGEXP)
+```
+
+TODO: Rakenna dataframe, jossa on EVTYPE ja summatut ja keskiarvot FATALITIES ja INJURIES ja CROPDMG sarakkeista.
+
+### Combining Event Types
+
+Summing the FATALITIES column by the EVTYPE column values and order biggest FATALITIES top, it is easy to see that tornadoes are the single biggest cause of fatalities in the US.
+
+```{r}
+fatalitiesByEventType <- fatalitiesByEventTypeUnOrdered[order(-fatalitiesByEventTypeUnOrdered$FATALITIES),] 
+head(fatalitiesByEventType)
+```
+
+From the result it is obvious that there are event types that are really the same thing, such as EXCESSIVE HEAT and HEAT. We need to sum together this sort of event types to make sure that e.g. all the HEAT related types together do not exceed the TORNADO fatalities.
+
+On the other hand, we can also calculate the mean of the fatalities by event.
+
+```{r}
+fatalitymeanByEventType <- fatalitymeanByEventTypeUnOrdered[order(-fatalitymeanByEventTypeUnOrdered$FATALITIES),] 
+head(fatalitymeanByEventType)
+```
+
+Here we also see that tornados are not a single type but several types that have the word TORNADO in their name.
+
+## Results
+
