@@ -21,38 +21,70 @@ if (!file.exists("stormdata.csv.bz2")) {
 }
 
 stormdata <- read.csv(bzfile("stormdata.csv.bz2"))
+```
 
-names(stormdata)
+The property damage values use a separate column of exponent values. They are translated in to numeric exponents and combined to a single number value.
+
+```{r}
+eval_exp <- function(val, exp) {
+  switch(as.character(exp), 
+         "-"=0, "?"=0, "+"=0, 
+         "0"=val, 
+         "1"=10*val, 
+         "2"=100*val, h=100*val, H=100*val,
+         "3"=1000*val, k=1000*val, K=1000*val, 
+         "4"=10000*val,
+         "5"=100000*val,
+         "6"=1000000*val, m=1000000*val, M=1000000*val,
+         "7"=10000000*val,
+         "8"=100000000*val,
+         b=1000000000*val, B=1000000000*val, 0)
+}
+
+eval_exp_v <- Vectorize(eval_exp)
+```
+
+Create a data frame that sums FATALITIES, INJURIES and PROPDMG:
+
+```{r, cache=TRUE}
+stormdata$prop_dmg <- eval_exp_v(stormdata$PROPDMG, stormdata$PROPDMGEXP)
 
 fatalitiesByEventTypeUnOrdered <- aggregate(FATALITIES ~ EVTYPE, stormdata, sum)
+fatalitiesByEventType <- fatalitiesByEventTypeUnOrdered[order(fatalitiesByEventTypeUnOrdered$EVTYPE),]
+
 fatalitymeanByEventTypeUnOrdered <- aggregate(FATALITIES ~ EVTYPE, stormdata, mean)
+fatalitymeanByEventType <- fatalitymeanByEventTypeUnOrdered[order(fatalitymeanByEventTypeUnOrdered$EVTYPE),]
 
-head(stormdata)
+injuriesByEventTypeUnOrdered <- aggregate(INJURIES ~ EVTYPE, stormdata, sum)
+injuriesByEventType <- injuriesByEventTypeUnOrdered[order(injuriesByEventTypeUnOrdered$EVTYPE),]
 
-unique(stormdata$PROPDMGEXP)
+injuriesmeanByEventTypeUnOrdered <- aggregate(INJURIES ~ EVTYPE, stormdata, mean)
+injuriesmeanByEventType <- injuriesmeanByEventTypeUnOrdered[order(injuriesmeanByEventTypeUnOrdered$EVTYPE),]
+
+prop_dmg_mean_eventtype_unordered <- aggregate(prop_dmg ~ EVTYPE, stormdata, mean)
+prop_dmg_mean_eventtype <- prop_dmg_mean_eventtype_unordered[order(prop_dmg_mean_eventtype_unordered$EVTYPE),]
+
+prop_dmg_sum_eventtype_unordered <- aggregate(prop_dmg ~ EVTYPE, stormdata, sum)
+
+stormdata_by_event_type <- prop_dmg_sum_eventtype_unordered[order(prop_dmg_sum_eventtype_unordered$EVTYPE),]
+stormdata_by_event_type$prop_dmg_mean <- prop_dmg_mean_eventtype$prop_dmg
+stormdata_by_event_type$fatalities_mean <- fatalitymeanByEventType$FATALITIES
+stormdata_by_event_type$fatalities_sum  <- fatalitiesByEventType$FATALITIES
+stormdata_by_event_type$injuries_mean <- injuriesmeanByEventType$INJURIES
+stormdata_by_event_type$injuries_sum  <- injuriesByEventType$INJURIES
 ```
-
-TODO: Rakenna dataframe, jossa on EVTYPE ja summatut ja keskiarvot FATALITIES ja INJURIES ja CROPDMG sarakkeista.
-
-### Combining Event Types
-
-Summing the FATALITIES column by the EVTYPE column values and order biggest FATALITIES top, it is easy to see that tornadoes are the single biggest cause of fatalities in the US.
-
-```{r}
-fatalitiesByEventType <- fatalitiesByEventTypeUnOrdered[order(-fatalitiesByEventTypeUnOrdered$FATALITIES),] 
-head(fatalitiesByEventType)
-```
-
-From the result it is obvious that there are event types that are really the same thing, such as EXCESSIVE HEAT and HEAT. We need to sum together this sort of event types to make sure that e.g. all the HEAT related types together do not exceed the TORNADO fatalities.
-
-On the other hand, we can also calculate the mean of the fatalities by event.
-
-```{r}
-fatalitymeanByEventType <- fatalitymeanByEventTypeUnOrdered[order(-fatalitymeanByEventTypeUnOrdered$FATALITIES),] 
-head(fatalitymeanByEventType)
-```
-
-Here we also see that tornados are not a single type but several types that have the word TORNADO in their name.
 
 ## Results
+
+Order the stormdata_by_event_type by fatalities and plot fatalities and injuries.
+Print out head of both orderings.
+
+Plot fatalities and injuries in fatalities order. <-- This shows the most dangerous.
+
+
+
+```{r}
+stormdata$dmg <- eval_exp_v(stormdata$PROPDMG, stormdata$PROPDMGEXP)
+```
+
 
