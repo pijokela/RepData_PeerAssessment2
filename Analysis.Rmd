@@ -14,6 +14,7 @@ output: html_document
 Load file from web and unzip it:
 
 ```{r, cache=TRUE}
+# Download data file from internet and store it:
 if (!file.exists("stormdata.csv.bz2")) {
   download.file(
     "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", 
@@ -21,6 +22,17 @@ if (!file.exists("stormdata.csv.bz2")) {
 }
 
 stormdata <- read.csv(bzfile("stormdata.csv.bz2"))
+
+# EVDATA contains upper and lower case letters, convert all to upper case:
+stormdata$EVTYPE <- toupper(stormdata$EVTYPE)
+
+# Remove summary rows from dataset, because they are not real storm types:
+stormdata <- stormdata[!grepl(".*SUMMARY.*", stormdata$EVTYPE), ]
+
+# Some EVTYPE values have leading spaces, they must be removed:
+#install.packages("stringr", dependencies=TRUE)
+require(stringr)
+stormdata$EVTYPE<-str_trim(stormdata$EVTYPE)
 ```
 
 The property damage values use a separate column of exponent values. They are translated in to numeric exponents and combined to a single number value.
@@ -76,15 +88,59 @@ stormdata_by_event_type$injuries_sum  <- injuriesByEventType$INJURIES
 
 ## Results
 
+### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
 Order the stormdata_by_event_type by fatalities and plot fatalities and injuries.
 Print out head of both orderings.
 
 Plot fatalities and injuries in fatalities order. <-- This shows the most dangerous.
 
-
-
 ```{r}
-stormdata$dmg <- eval_exp_v(stormdata$PROPDMG, stormdata$PROPDMGEXP)
+stormdata_fatalities_sorted <- stormdata_by_event_type[order(-stormdata_by_event_type$fatalities_sum),]
+head(stormdata_fatalities_sorted)
 ```
 
+From this table we can see that by far the most fatalities are caused by tornadoes. 
 
+```{r}
+stormdata_injuries_sorted <- stormdata_by_event_type[order(-stormdata_by_event_type$injuries_sum),]
+head(stormdata_injuries_sorted)
+```
+
+Tornadoes also lead the injuries data.
+
+#### What about EVTYPE groupings?
+
+The data contains many event types where heat is contained in the description. Also, there are other
+EVTYPE values that are also tornadoes. To make sure that the total fatalities of the HEAT related
+EVTYPES are not greater than the TORNADO fatalities, we can sum up the EVTYPES that contain these
+words.
+
+```{r}
+tornado_storm_data <- stormdata_by_event_type[grepl(".*TORNADO.*", stormdata_by_event_type$EVTYPE), ]
+sum(tornado_storm_data$fatalities_sum)
+sum(tornado_storm_data$injuries_sum)
+
+heat_storm_data <- stormdata_by_event_type[grepl(".*HEAT.*", stormdata_by_event_type$EVTYPE), ]
+sum(heat_storm_data$fatalities_sum)
+sum(heat_storm_data$injuries_sum)
+
+wind_storm_data <- stormdata_by_event_type[grepl(".*WI?ND.*", stormdata_by_event_type$EVTYPE), ]
+sum(wind_storm_data$fatalities_sum)
+sum(wind_storm_data$injuries_sum)
+```
+
+From here we can see that even added up, the HEAT types are not as harmful as the TORNADO type.
+
+#### Tornado is most harmful event type with respect to population health
+
+By sorting the data by the total number of injuries by event type we can see that 
+tornadoes also cause the most injuries. So it can be said that the most harmful type
+of events with respect to population healts is tornado.
+
+### Across the United States, which types of events have the greatest economic consequences?
+
+```{r}
+stormdata_prop_dmg_sorted <- stormdata_by_event_type[order(-stormdata_by_event_type$prop_dmg),]
+head(stormdata_prop_dmg_sorted)
+```
