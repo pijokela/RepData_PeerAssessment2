@@ -1,15 +1,19 @@
 ---
-title: "Analysis.Rmd"
-author: "Pirkka"
-date: "19.04.2015"
+title: "Severe weather public health and economic problems"
+author: "pijokela"
+date: "24.04.2015"
 output: html_document
 ---
 
 ## Synopsis
 
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. This analysis will find out which weather effects cause (1) the most public health issues as fatalities and injuries and (2) the most economic problems.
 
+The most health problems are caused by tornados while floods cause the biggest economical problems.
 
 ## Data Processing
+
+This section describes how the data was processed with R during the analysis.
 
 Load file from web and unzip it:
 
@@ -56,7 +60,7 @@ eval_exp <- function(val, exp) {
 eval_exp_v <- Vectorize(eval_exp)
 ```
 
-Create a data frame that sums FATALITIES, INJURIES and PROPDMG:
+Create a data frame that groups FATALITIES, INJURIES and PROPDMG for each event type in the original dataset:
 
 ```{r, cache=TRUE}
 stormdata$prop_dmg <- eval_exp_v(stormdata$PROPDMG, stormdata$PROPDMGEXP)
@@ -66,6 +70,12 @@ fatalitiesByEventType <- fatalitiesByEventTypeUnOrdered[order(fatalitiesByEventT
 
 fatalitymeanByEventTypeUnOrdered <- aggregate(FATALITIES ~ EVTYPE, stormdata, mean)
 fatalitymeanByEventType <- fatalitymeanByEventTypeUnOrdered[order(fatalitymeanByEventTypeUnOrdered$EVTYPE),]
+
+injuriesByEventTypeUnOrdered <- aggregate(INJURIES ~ EVTYPE, stormdata, sum)
+injuriesByEventType <- injuriesByEventTypeUnOrdered[order(injuriesByEventTypeUnOrdered$EVTYPE),]
+
+injuriesmeanByEventTypeUnOrdered <- aggregate(INJURIES ~ EVTYPE, stormdata, mean)
+injuriesmeanByEventType <- injuriesmeanByEventTypeUnOrdered[order(injuriesmeanByEventTypeUnOrdered$EVTYPE),]
 
 injuriesByEventTypeUnOrdered <- aggregate(INJURIES ~ EVTYPE, stormdata, sum)
 injuriesByEventType <- injuriesByEventTypeUnOrdered[order(injuriesByEventTypeUnOrdered$EVTYPE),]
@@ -88,6 +98,8 @@ stormdata_by_event_type$injuries_sum  <- injuriesByEventType$INJURIES
 
 ## Results
 
+This analysis has two parts in this results section. First we concentrate on healts issues and later on property damage.
+
 ### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
 
 Order the stormdata_by_event_type by fatalities and plot fatalities and injuries.
@@ -97,7 +109,18 @@ Plot fatalities and injuries in fatalities order. <-- This shows the most danger
 
 ```{r}
 stormdata_fatalities_sorted <- stormdata_by_event_type[order(-stormdata_by_event_type$fatalities_sum),]
-head(stormdata_fatalities_sorted)
+stormdata_fatalities_plot <- head(stormdata_fatalities_sorted, n = 10L)
+```
+
+```{r}
+#install.packages("RColorBrewer", dependencies=TRUE)
+library(RColorBrewer)
+colors10 = brewer.pal(10, "Set3")
+
+barplot(stormdata_fatalities_plot$fatalities_sum, main="The 10 biggest causes of fatalities", xlab="Event type", ylab="# of fatalities", col=colors10)
+
+legend("topright", stormdata_fatalities_plot$EVTYPE, cex=0.8, bty="n", fill=colors10)
+
 ```
 
 From this table we can see that by far the most fatalities are caused by tornadoes. 
@@ -140,7 +163,33 @@ of events with respect to population healts is tornado.
 
 ### Across the United States, which types of events have the greatest economic consequences?
 
+To find out which event type causes the most economic consequences, we use the property data column in the storm data grouped by event types. To find the biggest economic impact, use head to list top contributors:
+
 ```{r}
 stormdata_prop_dmg_sorted <- stormdata_by_event_type[order(-stormdata_by_event_type$prop_dmg),]
-head(stormdata_prop_dmg_sorted)
+stormdata_prop_dmg_plot <- head(stormdata_prop_dmg_sorted, n=10)
 ```
+
+```{r}
+barplot(stormdata_prop_dmg_plot$prop_dmg, main="The 10 biggest causes of property damage", xlab="Event type", ylab="$ damages", col=colors10)
+
+legend("topright", stormdata_prop_dmg_plot$EVTYPE, cex=0.8, bty="n", fill=colors10)
+
+```
+
+
+#### The most economical problem causing event type is floods
+
+The most property damage causing single EVTYPE is FLOOD. There are also some other EVTYPEs with the word flood in them. Sum these up to find the total amount of flood damages:
+
+```{r}
+flood_storm_data <- stormdata_by_event_type[grepl(".*FLOOD.*", stormdata_by_event_type$EVTYPE), ]
+sum(flood_storm_data$prop_dmg)
+sum(tornado_storm_data$prop_dmg)
+sum(wind_storm_data$prop_dmg)
+sum(stormdata_by_event_type$prop_dmg) - sum(flood_storm_data$prop_dmg)
+```
+
+Comparing these sums shows that even if we group together all events that contain the word wind, the flood damages are still the biggest cause of property damage.
+
+The mean property damage of a flood is $5711826, which is much less then the mean damage from a hurricane ($787566363). This means that the reason floods are the biggest cause of property damage is as much the number of floods as it is the damage from each separate flood.
